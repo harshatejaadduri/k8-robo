@@ -14,8 +14,29 @@ data:
 
 ---
 
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1 
+kind: Service
+metadata:
+ name: mysql-svc-headless
+ namespace: roboshop
+ labels:
+  component: mysql
+  environment: dev
+  tier: database
+
+spec:
+ clusterIP: None 
+ selector:
+  component: mysql
+  environment: dev
+  tier: database
+ ports:
+  - protocol: TCP
+    port: 3306
+    targetPort: 3306
+---
+apiVersion: v1 
+kind: Service
 metadata:
  name: mysql
  namespace: roboshop
@@ -23,8 +44,32 @@ metadata:
   component: mysql
   environment: dev
   tier: database
+
 spec:
- replicas: 1
+ selector:
+  component: mysql
+  environment: dev
+  tier: database
+ ports:
+  - protocol: TCP
+    port: 3306
+    targetPort: 3306
+
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+ name: mysql
+ namespace: roboshop
+ labels:
+  component: mysql
+  environment: dev
+  tier: database
+
+spec:
+ replicas: 2
+ serviceName: "mysql-svc-headless"
  selector:
   matchLabels:
     component: mysql
@@ -36,6 +81,7 @@ spec:
      component: mysql
      environment: dev
      tier: database
+
   spec: 
    containers:
     - name: mysql
@@ -43,23 +89,19 @@ spec:
       envFrom:
        - secretRef:
           name: mysql
+      volumeMounts:
+       - name: mysql-vol
+         mountPath: /var/lib/mysql     
 
----
-apiVersion: v1 
-kind: Service
-metadata:
- name: mysql
- namespace: roboshop
- labels:
-  component: mysql
-  environment: dev
-  tier: database
-spec:
- selector:
-  component: mysql
-  environment: dev
-  tier: database
- ports:
-  - protocol: TCP
-    port: 3306
-    targetPort: 3306
+ volumeClaimTemplates:
+  metadata:
+    name: mysql-vol
+  spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: "roboshop-ebs-sc"
+        resources:
+          requests:
+            storage: 2Gi   
+
+
+    

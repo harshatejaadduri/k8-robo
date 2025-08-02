@@ -100,6 +100,14 @@ spec:
     containers:
       - name: frontend
         image: harshatejaadduri/frontend:v2
+        resource:
+         requests:
+          cpu: "50m"
+          memory: "128Mi"
+         limits:
+          cpu: "100m"
+          memory: "256Mi"
+          
         volumeMounts:
           - name: frontend
             mountPath: /etc/nginx/nginx.conf
@@ -134,3 +142,24 @@ spec:
       port: 80
       targetPort: 8080
   
+---
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend
+  namespace: roboshop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 10
